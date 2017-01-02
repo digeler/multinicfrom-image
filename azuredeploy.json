@@ -1,0 +1,219 @@
+﻿{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vmSize": {
+      "type": "string",
+      "defaultValue": "Standard_D2",
+      "metadata": {
+        "description": "Size of the VM"
+      }
+    },
+    "subnetName": {
+      "type": "string",
+      "defaultValue": "ADStaticSubnet",
+      "metadata": {
+        "description": "subnet1name"
+      }
+    },
+    "subnetName1": {
+      "type": "string",
+      "defaultValue": "sqlSubnet",
+      "metadata": {
+        "description": "subnet2name"
+      }
+    },
+    "vnetName": {
+      "type": "string",
+      "defaultValue": "WorkloadVNET",
+      "metadata": {
+        "description": "Exisiting vnet name"
+      }
+    },
+    "osDiskVhdUri": {
+      "type": "string",
+      "defaultValue": "https://favad.blob.core.windows.net/vhds/mid01.vhd",
+      "metadata": {
+        "description": "existing vhd"
+      }
+    },
+    "osType": {
+      "type": "string",
+      "defaultValue": "linux",
+      "metadata": {
+        "description": "os type"
+      }
+    },
+    "availabilitySetName": {
+      "type": "string",
+      "defaultValue": "myavsettest",
+      "metadata": {
+        "description": "newavsetname"
+      }
+    },
+    "publicIPAddressName": {
+      "type": "string",
+      "defaultValue": "mynewoybkk",
+      "metadata": {
+        "description": "public ip "
+      }
+    },
+    "vmname": {
+      "type": "string",
+      "defaultValue": "mymultinicvm",
+      "metadata": {
+        "description": "public ip "
+      }
+    },
+    "diagnosticaccount": {
+      "type": "string",
+      "defaultValue": "favad",
+      "metadata": {
+        "description": "Diagnsotic storage account"
+      }
+    }
+  },
+  "variables": {
+    "publicIPAddressType": "Dynamic",
+
+
+
+    "nic1NamePrefix": "net1",
+    "nic2NamePrefix": "net2",
+
+
+
+
+
+    "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',parameters('vnetName'))]",
+    "subnetRef": "[concat(variables('vnetID'),'/subnets/',parameters('subnetName'))]",
+    "subnetRef1": "[concat(variables('vnetID'),'/subnets/',parameters('subnetName1'))]",
+    "publicIPAddressID": "[resourceId('Microsoft.Network/publicIPAddresses',parameters('publicIPAddressName'))]",
+    "nicName1": "nicone1",
+    "nicName2" : "nictwo2"
+
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Compute/availabilitySets",
+      "name": "[parameters('availabilitySetName')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[resourceGroup().location]",
+      "properties": { }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "myPublicIP",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "publicIPAllocationMethod": "[variables('publicIPAddressType')]",
+        "dnsSettings": {
+          "domainNameLabel": "[parameters('publicIPAddressName')]"
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "nicone1",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetRef')]"
+              }
+
+
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "nictwo2",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetRef1')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('vmname')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/availabilitySets/', parameters('availabilitySetName'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nicName1'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nicName2'))]"
+
+      ],
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets',parameters('availabilitySetName'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[parameters('vmSize')]"
+        },
+
+        "storageProfile": {
+
+          "osDisk": {
+            "name": "osdisk",
+            "osType": "[parameters('osType')]",
+            "vhd": {
+              "uri": "[parameters('osDiskVhdUri')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "Attach"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "properties": {
+                "primary": true
+              },
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName1'))]"
+            },
+            {
+              "properties": {
+                "primary": false
+              },
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName2'))]"
+            }
+          ]
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": "true",
+            "storageUri": "[concat('http://',parameters('diagnosticaccount'),'.blob.core.windows.net')]"
+          }
+        }
+      }
+    }
+  ]
+}
